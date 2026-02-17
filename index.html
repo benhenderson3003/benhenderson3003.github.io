@@ -1,1 +1,431 @@
-<h1>TEST</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pre-Sales Command Centre</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9fafb; }
+  .animate-spin { animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const STAGES = ["Discovery","Demo Scheduled","Demo Done","Trial","POC","Closed Won","Closed Lost"];
+const INDUSTRIES = ["SaaS/Tech","Financial Services","Healthcare","Retail/E-Commerce","Manufacturing","Professional Services","Government","Other"];
+const FRAMEWORKS = ["MEDDIC","BANT","SPICED"];
+const STAGE_COLORS = {
+  "Discovery":"#ede9fe|#6d28d9","Demo Scheduled":"#dbeafe|#1d4ed8","Demo Done":"#e0e7ff|#4338ca",
+  "Trial":"#fef3c7|#b45309","POC":"#ffedd5|#c2410c","Closed Won":"#dcfce7|#15803d","Closed Lost":"#fee2e2|#b91c1c"
+};
+
+const ANTHROPIC_KEY_STORAGE = "presales-api-key";
+const ACCOUNTS_STORAGE = "presales-crm-accounts-v1";
+
+const emptyAccount = () => ({
+  id: Date.now().toString(), company:"", contact:"", role:"", industry:"", stage:"Discovery",
+  dealValue:"", owner:"", nextDate:"", painPoints:"", demoNotes:"", callNotes:"", generatedPrep:"",
+  createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+});
+
+function Badge({ label }) {
+  const colors = STAGE_COLORS[label] || "#f3f4f6|#374151";
+  const [bg, text] = colors.split("|");
+  return <span style={{background:bg, color:text, fontSize:"11px", fontWeight:600, padding:"2px 8px", borderRadius:"9999px"}}>{label}</span>;
+}
+
+function Input({ label, value, onChange, placeholder, type="text", required }) {
+  return (
+    <div>
+      <label style={{fontSize:"11px",fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}{required&&" *"}</label>
+      <input type={type} placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)}
+        style={{width:"100%",marginTop:"4px",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"8px 12px",fontSize:"13px",outline:"none",boxSizing:"border-box"}}
+        onFocus={e=>e.target.style.boxShadow="0 0 0 2px #c7d2fe"} onBlur={e=>e.target.style.boxShadow=""} />
+    </div>
+  );
+}
+
+function Textarea({ label, value, onChange, placeholder, rows=3 }) {
+  return (
+    <div>
+      <label style={{fontSize:"11px",fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}</label>
+      <textarea rows={rows} placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)}
+        style={{width:"100%",marginTop:"4px",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"8px 12px",fontSize:"13px",outline:"none",resize:"vertical",boxSizing:"border-box",fontFamily:"inherit"}}
+        onFocus={e=>e.target.style.boxShadow="0 0 0 2px #c7d2fe"} onBlur={e=>e.target.style.boxShadow=""} />
+    </div>
+  );
+}
+
+function Select({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label style={{fontSize:"11px",fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}</label>
+      <select value={value} onChange={e=>onChange(e.target.value)}
+        style={{width:"100%",marginTop:"4px",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"8px 12px",fontSize:"13px",outline:"none",background:"white",boxSizing:"border-box"}}>
+        {options.map(o => typeof o==="string" ? <option key={o} value={o}>{o}</option> : <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Card({ children, style={} }) {
+  return <div style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"16px",boxShadow:"0 1px 3px rgba(0,0,0,0.06)",...style}}>{children}</div>;
+}
+
+function SectionTitle({ children }) {
+  return <div style={{fontSize:"11px",fontWeight:700,color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:"12px"}}>{children}</div>;
+}
+
+// API Key Modal
+function ApiKeyModal({ onSave }) {
+  const [key, setKey] = useState("");
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+      <div style={{background:"white",borderRadius:"16px",padding:"28px",maxWidth:"440px",width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{fontSize:"24px",marginBottom:"8px"}}>🔑</div>
+        <h2 style={{fontSize:"18px",fontWeight:700,color:"#111827",marginBottom:"8px"}}>Enter Your Anthropic API Key</h2>
+        <p style={{fontSize:"13px",color:"#6b7280",marginBottom:"16px",lineHeight:"1.5"}}>
+          This tool uses Claude AI to generate demo prep guides. Your key is stored locally in your browser only — it's never sent anywhere except directly to Anthropic's API.
+          <br/><br/>Get your key at <a href="https://console.anthropic.com" target="_blank" style={{color:"#4f46e5"}}>console.anthropic.com</a>
+        </p>
+        <input
+          type="password" placeholder="sk-ant-..." value={key} onChange={e=>setKey(e.target.value)}
+          style={{width:"100%",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"10px 12px",fontSize:"13px",outline:"none",boxSizing:"border-box",marginBottom:"12px"}}
+        />
+        <button onClick={()=>{ if(key.trim()) { localStorage.setItem(ANTHROPIC_KEY_STORAGE, key.trim()); onSave(key.trim()); }}}
+          disabled={!key.trim()}
+          style={{width:"100%",background:"#4f46e5",color:"white",border:"none",borderRadius:"8px",padding:"10px",fontSize:"14px",fontWeight:600,cursor:"pointer"}}>
+          Save & Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [accounts, setAccounts] = useState([]);
+  const [view, setView] = useState("list");
+  const [form, setForm] = useState(emptyAccount());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [framework, setFramework] = useState("MEDDIC");
+  const [search, setSearch] = useState("");
+  const [stageFilter, setStageFilter] = useState("All");
+  const [saveStatus, setSaveStatus] = useState("");
+  const [apiKey, setApiKey] = useState(null);
+  const [showApiModal, setShowApiModal] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ACCOUNTS_STORAGE);
+      if (saved) setAccounts(JSON.parse(saved));
+      const key = localStorage.getItem(ANTHROPIC_KEY_STORAGE);
+      if (key) setApiKey(key);
+    } catch(e) {}
+  }, []);
+
+  const persist = useCallback((updated) => {
+    setSaveStatus("Saving...");
+    try {
+      localStorage.setItem(ACCOUNTS_STORAGE, JSON.stringify(updated));
+      setSaveStatus("Saved ✓");
+      setTimeout(()=>setSaveStatus(""), 2000);
+    } catch(e) { setSaveStatus("Save failed"); }
+  }, []);
+
+  const handleSave = () => {
+    const exists = accounts.find(a => a.id === form.id);
+    const updated = exists
+      ? accounts.map(a => a.id===form.id ? {...form, updatedAt:new Date().toISOString()} : a)
+      : [...accounts, {...form, id:Date.now().toString(), createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()}];
+    setAccounts(updated);
+    persist(updated);
+    setView("list");
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Delete this account?")) return;
+    const updated = accounts.filter(a=>a.id!==id);
+    setAccounts(updated);
+    persist(updated);
+    setView("list");
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Company","Contact","Role","Industry","Stage","Deal Value","Owner","Next Date","Pain Points","Demo Notes","Call Notes"];
+    const rows = accounts.map(a => [a.company,a.contact,a.role,a.industry,a.stage,a.dealValue,a.owner,a.nextDate,a.painPoints,a.demoNotes,a.callNotes].map(v=>`"${(v||"").replace(/"/g,'""')}"`).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download="presales-accounts.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleGenerate = async () => {
+    if (!form.company || !form.painPoints) { alert("Please fill in Company and Pain Points first."); return; }
+    if (!apiKey) { setShowApiModal(true); return; }
+    setIsGenerating(true);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body: JSON.stringify({
+          model:"claude-opus-4-5-20251101", max_tokens:1200,
+          messages:[{role:"user",content:`You are an expert pre-sales engineer. Generate a concise, actionable demo prep guide.
+
+Company: ${form.company}
+Contact: ${form.contact} (${form.role})
+Industry: ${form.industry}
+Deal Stage: ${form.stage}
+Pain Points: ${form.painPoints}
+Demo Notes: ${form.demoNotes||"None"}
+Framework: ${framework}
+
+Generate:
+1. **Demo Narrative** - 2-sentence prospect-specific opening that sets the scene
+2. **5 Discovery Questions** - ${framework}-aligned, tailored to their industry and pain points
+3. **Recommended Demo Flow** - 3-4 sections with specific focus areas for this prospect
+4. **Top 3 Objections & Responses** - likely pushback and how to handle it
+5. **Success Criteria to Establish** - what does a win look like for them?
+6. **Proposed Next Steps** - what to suggest at end of the demo
+
+Be specific to their industry. Be concise and actionable. No generic advice.`}]
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        if (err.error?.type==="authentication_error") { alert("Invalid API key. Please re-enter."); localStorage.removeItem(ANTHROPIC_KEY_STORAGE); setApiKey(null); setShowApiModal(true); setIsGenerating(false); return; }
+        throw new Error(err.error?.message || "API error");
+      }
+      const data = await res.json();
+      const text = data.content?.map(b=>b.text||"").join("\n") || "Generation failed.";
+      const updated = {...form, generatedPrep:text};
+      setForm(updated);
+      if (accounts.find(a=>a.id===form.id)) {
+        const updatedAccounts = accounts.map(a=>a.id===form.id?{...updated,updatedAt:new Date().toISOString()}:a);
+        setAccounts(updatedAccounts);
+        persist(updatedAccounts);
+      }
+    } catch(e) { alert("Generation failed: "+e.message); }
+    setIsGenerating(false);
+  };
+
+  const filtered = accounts
+    .filter(a=>stageFilter==="All"||a.stage===stageFilter)
+    .filter(a=>[a.company,a.contact,a.owner].join(" ").toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));
+
+  const totalPipeline = accounts.filter(a=>!["Closed Won","Closed Lost"].includes(a.stage)).reduce((s,a)=>s+(parseFloat(a.dealValue?.replace(/,/g,""))||0),0);
+  const wonValue = accounts.filter(a=>a.stage==="Closed Won").reduce((s,a)=>s+(parseFloat(a.dealValue?.replace(/,/g,""))||0),0);
+  const soonCount = accounts.filter(a=>{ if(!a.nextDate)return false; const d=(new Date(a.nextDate)-new Date())/864e5; return d>=0&&d<=7; }).length;
+
+  // Detail / New view
+  if (view==="detail"||view==="new") return (
+    <div style={{minHeight:"100vh",background:"#f9fafb"}}>
+      {showApiModal && <ApiKeyModal onSave={k=>{setApiKey(k);setShowApiModal(false);}} />}
+      {/* Header */}
+      <div style={{background:"white",borderBottom:"1px solid #e5e7eb",padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+          <button onClick={()=>setView("list")} style={{background:"none",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"6px 8px",cursor:"pointer",color:"#6b7280"}}>← Back</button>
+          <span style={{fontWeight:700,fontSize:"16px",color:"#111827"}}>{view==="new"?"New Account":form.company||"Account"}</span>
+          {view==="detail" && <Badge label={form.stage} />}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+          {saveStatus && <span style={{fontSize:"13px",color:"#16a34a",fontWeight:500}}>{saveStatus}</span>}
+          {view==="detail" && <button onClick={()=>handleDelete(form.id)} style={{background:"none",border:"none",color:"#ef4444",fontSize:"13px",fontWeight:500,cursor:"pointer"}}>Delete</button>}
+          <button onClick={handleSave} style={{background:"#4f46e5",color:"white",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"13px",fontWeight:600,cursor:"pointer"}}>Save Account</button>
+        </div>
+      </div>
+
+      <div style={{maxWidth:"960px",margin:"0 auto",padding:"20px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"20px"}}>
+        {/* Left col */}
+        <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
+          <Card>
+            <SectionTitle>Account Details</SectionTitle>
+            <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+              <Input label="Company" required value={form.company} onChange={v=>setForm(f=>({...f,company:v}))} placeholder="Acme Corp" />
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+                <Input label="Contact" value={form.contact} onChange={v=>setForm(f=>({...f,contact:v}))} placeholder="Jane Smith" />
+                <Input label="Role" value={form.role} onChange={v=>setForm(f=>({...f,role:v}))} placeholder="VP Engineering" />
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+                <Select label="Industry" value={form.industry} onChange={v=>setForm(f=>({...f,industry:v}))} options={[{v:"",l:"Select..."},...INDUSTRIES]} />
+                <Select label="Stage" value={form.stage} onChange={v=>setForm(f=>({...f,stage:v}))} options={STAGES} />
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}>
+                <Input label="Deal Value ($)" value={form.dealValue} onChange={v=>setForm(f=>({...f,dealValue:v}))} placeholder="50,000" />
+                <Input label="Owner / SE" value={form.owner} onChange={v=>setForm(f=>({...f,owner:v}))} placeholder="Alex Johnson" />
+              </div>
+              <Input label="Next Key Date" type="date" value={form.nextDate} onChange={v=>setForm(f=>({...f,nextDate:v}))} />
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Context & Notes</SectionTitle>
+            <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+              <Textarea label="Key Pain Points *" rows={3} value={form.painPoints} onChange={v=>setForm(f=>({...f,painPoints:v}))} placeholder="What are they solving? What drives urgency?" />
+              <Textarea label="Demo Focus / Requests" rows={2} value={form.demoNotes} onChange={v=>setForm(f=>({...f,demoNotes:v}))} placeholder="Features to highlight? Specific asks?" />
+              <Textarea label="Call Notes / Internal Context" rows={3} value={form.callNotes} onChange={v=>setForm(f=>({...f,callNotes:v}))} placeholder="Raw notes, next actions, competitive intel..." />
+            </div>
+          </Card>
+        </div>
+
+        {/* Right col */}
+        <div style={{display:"flex",flexDirection:"column",gap:"16px"}}>
+          <Card>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px"}}>
+              <SectionTitle>AI Demo Prep Generator</SectionTitle>
+              <select value={framework} onChange={e=>setFramework(e.target.value)} style={{fontSize:"12px",border:"1px solid #e5e7eb",borderRadius:"6px",padding:"4px 8px",background:"white"}}>
+                {FRAMEWORKS.map(f=><option key={f}>{f}</option>)}
+              </select>
+            </div>
+            <p style={{fontSize:"12px",color:"#9ca3af",marginBottom:"12px"}}>Fill Company + Pain Points, then generate a tailored guide.</p>
+            <button onClick={handleGenerate} disabled={isGenerating}
+              style={{width:"100%",background:isGenerating?"#818cf8":"#4f46e5",color:"white",border:"none",borderRadius:"8px",padding:"10px",fontSize:"13px",fontWeight:600,cursor:isGenerating?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"8px"}}>
+              {isGenerating ? <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/><path fill="currentColor" d="M4 12a8 8 0 018-8v8z" opacity="0.75"/></svg>Generating...</> : "✨ Generate Demo Prep"}
+            </button>
+            {!apiKey && <p style={{fontSize:"11px",color:"#9ca3af",marginTop:"8px",textAlign:"center"}}>You'll be prompted for your Anthropic API key on first use.</p>}
+          </Card>
+
+          {form.generatedPrep ? (
+            <Card style={{background:"linear-gradient(135deg,#eef2ff,#f5f3ff)",borderColor:"#c7d2fe"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"10px"}}>
+                <SectionTitle>✨ Prep Guide</SectionTitle>
+                <div style={{display:"flex",gap:"12px"}}>
+                  <button onClick={()=>navigator.clipboard.writeText(form.generatedPrep)} style={{background:"none",border:"none",fontSize:"12px",color:"#4f46e5",fontWeight:500,cursor:"pointer"}}>Copy</button>
+                  <button onClick={handleGenerate} disabled={isGenerating} style={{background:"none",border:"none",fontSize:"12px",color:"#4f46e5",fontWeight:500,cursor:"pointer"}}>Regenerate</button>
+                </div>
+              </div>
+              <div style={{fontSize:"13px",color:"#1f2937",whiteSpace:"pre-wrap",lineHeight:"1.6",maxHeight:"420px",overflowY:"auto"}}>{form.generatedPrep}</div>
+            </Card>
+          ) : (
+            <div style={{background:"#f9fafb",borderRadius:"12px",border:"2px dashed #e5e7eb",padding:"40px 20px",textAlign:"center"}}>
+              <div style={{fontSize:"36px",marginBottom:"10px"}}>✨</div>
+              <p style={{fontSize:"13px",color:"#9ca3af"}}>Your AI-generated demo prep guide will appear here — discovery questions, demo flow, objection handling, and more.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // List view
+  return (
+    <div style={{minHeight:"100vh",background:"#f9fafb"}}>
+      {showApiModal && <ApiKeyModal onSave={k=>{setApiKey(k);setShowApiModal(false);}} />}
+      {/* Header */}
+      <div style={{background:"white",borderBottom:"1px solid #e5e7eb",padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+          <div style={{width:"36px",height:"36px",borderRadius:"10px",background:"#4f46e5",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:"15px",color:"#111827"}}>Pre-Sales Command Centre</div>
+            <div style={{fontSize:"11px",color:"#9ca3af"}}>Demo Prep + Account Tracker</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:"8px"}}>
+          <button onClick={handleExportCSV} style={{background:"white",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"8px 14px",fontSize:"12px",fontWeight:500,color:"#374151",cursor:"pointer"}}>Export CSV</button>
+          <button onClick={()=>{setForm(emptyAccount());setView("new");}} style={{background:"#4f46e5",color:"white",border:"none",borderRadius:"8px",padding:"8px 14px",fontSize:"13px",fontWeight:600,cursor:"pointer"}}>+ New Account</button>
+        </div>
+      </div>
+
+      <div style={{maxWidth:"960px",margin:"0 auto",padding:"20px"}}>
+        {/* Stats */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"12px",marginBottom:"20px"}}>
+          {[
+            {label:"Total Accounts",value:accounts.length,icon:"🏢"},
+            {label:"Active Pipeline",value:`$${(totalPipeline/1000).toFixed(0)}k`,icon:"📈"},
+            {label:"Closed Won",value:`$${(wonValue/1000).toFixed(0)}k`,icon:"🏆"},
+            {label:"Due This Week",value:soonCount,icon:"📅"},
+          ].map(s=>(
+            <Card key={s.label} style={{padding:"14px"}}>
+              <div style={{fontSize:"22px",marginBottom:"4px"}}>{s.icon}</div>
+              <div style={{fontSize:"22px",fontWeight:700,color:"#111827"}}>{s.value}</div>
+              <div style={{fontSize:"11px",color:"#9ca3af",fontWeight:500}}>{s.label}</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"12px"}}>
+          {["All",...STAGES].map(s=>(
+            <button key={s} onClick={()=>setStageFilter(s)}
+              style={{fontSize:"11px",fontWeight:600,padding:"5px 10px",borderRadius:"9999px",border:`1px solid ${stageFilter===s?"#4f46e5":"#e5e7eb"}`,background:stageFilter===s?"#4f46e5":"white",color:stageFilter===s?"white":"#6b7280",cursor:"pointer"}}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div style={{position:"relative",marginBottom:"16px"}}>
+          <span style={{position:"absolute",left:"12px",top:"50%",transform:"translateY(-50%)",color:"#9ca3af"}}>🔍</span>
+          <input placeholder="Search by company, contact or owner..." value={search} onChange={e=>setSearch(e.target.value)}
+            style={{width:"100%",border:"1px solid #e5e7eb",borderRadius:"8px",padding:"9px 12px 9px 36px",fontSize:"13px",outline:"none",background:"white",boxSizing:"border-box"}} />
+        </div>
+
+        {/* Account list */}
+        {filtered.length===0 ? (
+          <div style={{background:"white",borderRadius:"12px",border:"2px dashed #e5e7eb",padding:"60px 20px",textAlign:"center"}}>
+            <div style={{fontSize:"40px",marginBottom:"10px"}}>🚀</div>
+            <h3 style={{fontWeight:700,color:"#374151",marginBottom:"6px"}}>No accounts yet</h3>
+            <p style={{fontSize:"13px",color:"#9ca3af",marginBottom:"16px"}}>Add your first prospect and generate AI-powered demo prep instantly.</p>
+            <button onClick={()=>{setForm(emptyAccount());setView("new");}} style={{background:"#4f46e5",color:"white",border:"none",borderRadius:"8px",padding:"10px 20px",fontSize:"13px",fontWeight:600,cursor:"pointer"}}>Add First Account</button>
+          </div>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",gap:"8px"}}>
+            {filtered.map(acc=>{
+              const days = acc.nextDate ? Math.ceil((new Date(acc.nextDate)-new Date())/864e5) : null;
+              return (
+                <div key={acc.id} onClick={()=>{setForm({...acc});setView("detail");}}
+                  style={{background:"white",borderRadius:"12px",border:"1px solid #e5e7eb",padding:"14px 16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",transition:"all 0.15s"}}
+                  onMouseOver={e=>{e.currentTarget.style.borderColor="#a5b4fc";e.currentTarget.style.boxShadow="0 4px 12px rgba(79,70,229,0.1)";}}
+                  onMouseOut={e=>{e.currentTarget.style.borderColor="#e5e7eb";e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.04)";}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:"12px",minWidth:0}}>
+                      <div style={{width:"36px",height:"36px",borderRadius:"8px",background:"#eef2ff",display:"flex",alignItems:"center",justifyContent:"center",color:"#4f46e5",fontWeight:700,fontSize:"14px",flexShrink:0}}>
+                        {acc.company?.charAt(0)?.toUpperCase()||"?"}
+                      </div>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:"14px",color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{acc.company||"Unnamed"}</div>
+                        <div style={{fontSize:"12px",color:"#9ca3af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{acc.contact}{acc.role?` · ${acc.role}`:""}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:"8px",flexShrink:0}}>
+                      <Badge label={acc.stage} />
+                      {acc.dealValue&&<span style={{fontSize:"11px",fontWeight:600,color:"#374151",background:"#f3f4f6",padding:"3px 8px",borderRadius:"9999px"}}>${acc.dealValue}</span>}
+                    </div>
+                  </div>
+                  <div style={{marginTop:"8px",display:"flex",gap:"16px",fontSize:"11px",color:"#9ca3af",flexWrap:"wrap"}}>
+                    {acc.industry&&<span>🏭 {acc.industry}</span>}
+                    {acc.owner&&<span>👤 {acc.owner}</span>}
+                    {days!==null&&<span style={{fontWeight:500,color:days<0?"#ef4444":days<=2?"#d97706":"#9ca3af"}}>📅 {days<0?`${Math.abs(days)}d overdue`:days===0?"Today":`In ${days}d`}</span>}
+                    {acc.generatedPrep&&<span style={{color:"#6366f1",fontWeight:500}}>✨ Prep ready</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{marginTop:"24px",textAlign:"center",fontSize:"11px",color:"#d1d5db"}}>
+          Data saved locally in your browser · Pre-Sales Command Centre
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
