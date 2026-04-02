@@ -3,256 +3,482 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ben Henderson</title>
+  <title>Ben's Corner of the Internet</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      line-height: 1.6;
+    :root {
+      --pink: #f472b6;
+      --purple: #a78bfa;
+      --cyan: #22d3ee;
+      --yellow: #fbbf24;
+      --green: #4ade80;
+      --bg: #0a0a0f;
     }
 
-    a { color: #60a5fa; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
 
-    /* Nav */
+    /* ---- Noise grain overlay ---- */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ---- Floating blobs ---- */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: drift 18s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .blob-1 { width: 480px; height: 480px; background: var(--purple); top: -120px; left: -120px; animation-delay: 0s; }
+    .blob-2 { width: 360px; height: 360px; background: var(--pink);   bottom: 10%; right: -80px;  animation-delay: -6s; }
+    .blob-3 { width: 300px; height: 300px; background: var(--cyan);   top: 40%;   left: 30%;    animation-delay: -12s; }
+    @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(40px, 30px) scale(1.1); } }
+
+    /* ---- Nav ---- */
     nav {
-      position: sticky;
-      top: 0;
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid #1e293b;
+      position: fixed;
+      top: 0; left: 0; right: 0;
       padding: 0 2rem;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 56px;
-      z-index: 100;
+      z-index: 500;
+      background: rgba(10,10,15,0.6);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
-    .nav-logo {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: #f1f5f9;
-    }
+    .nav-logo { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; }
+    .nav-logo span { background: linear-gradient(135deg, var(--pink), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .nav-links { display: flex; gap: 1.5rem; }
-    .nav-links a { color: #94a3b8; font-size: 0.9rem; font-weight: 500; }
-    .nav-links a:hover { color: #f1f5f9; text-decoration: none; }
+    .nav-links a { color: #64748b; font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover { color: #e2e8f0; }
 
-    /* Hero */
+    /* ---- Hero ---- */
     .hero {
-      max-width: 800px;
-      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
       padding: 6rem 2rem 4rem;
+      position: relative;
     }
-    .hero-label {
-      display: inline-block;
-      background: #1e3a5f;
-      color: #60a5fa;
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+    .hero-eyebrow {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
       text-transform: uppercase;
-      padding: 4px 12px;
-      border-radius: 9999px;
-      margin-bottom: 1.25rem;
-    }
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3.5rem);
-      font-weight: 800;
-      color: #f1f5f9;
-      line-height: 1.15;
+      color: var(--cyan);
       margin-bottom: 1rem;
     }
-    .hero h1 span { color: #60a5fa; }
-    .hero p {
-      font-size: 1.1rem;
-      color: #94a3b8;
-      max-width: 560px;
-      margin-bottom: 2rem;
-    }
-    .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-    .btn {
-      display: inline-block;
-      padding: 0.6rem 1.4rem;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: opacity 0.15s;
-    }
-    .btn:hover { opacity: 0.85; text-decoration: none; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-outline { background: transparent; border: 1px solid #334155; color: #cbd5e1; }
-
-    /* Section */
-    section {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 3rem 2rem;
-      border-top: 1px solid #1e293b;
-    }
-    section h2 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #f1f5f9;
+    .hero h1 {
+      font-size: clamp(2.8rem, 8vw, 6rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
       margin-bottom: 1.5rem;
     }
-
-    /* About */
-    .about-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
+    .hero h1 .line { display: block; }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, var(--pink) 0%, var(--purple) 50%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
-    @media (max-width: 600px) { .about-grid { grid-template-columns: 1fr; } }
-    .about-item {
-      background: #1e293b;
-      border-radius: 10px;
-      padding: 1rem 1.25rem;
+    .hero-sub {
+      font-size: 1.1rem;
+      color: #64748b;
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
     }
-    .about-item .label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
-    .about-item .value { font-size: 0.95rem; color: #e2e8f0; }
-
-    /* Projects */
-    .projects { display: flex; flex-direction: column; gap: 1rem; }
-    .project-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      transition: border-color 0.15s;
-    }
-    .project-card:hover { border-color: #2563eb; }
-    .project-card h3 { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
-    .project-card p { font-size: 0.9rem; color: #94a3b8; margin-bottom: 0.75rem; }
-    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-    .tag {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #94a3b8;
-      font-size: 0.75rem;
-      font-weight: 500;
-      padding: 2px 8px;
-      border-radius: 9999px;
-    }
-
-    /* Contact */
-    .contact-links { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .contact-link {
+    .hero-sub em { font-style: normal; color: #94a3b8; }
+    .hero-scroll {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 6px;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 0.5rem 1rem;
-      font-size: 0.9rem;
-      color: #cbd5e1;
-      transition: border-color 0.15s;
+      color: #334155;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
     }
-    .contact-link:hover { border-color: #60a5fa; text-decoration: none; color: #60a5fa; }
+    .hero-scroll .arrow { animation: bounce 1.5s ease-in-out infinite; }
+    @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
 
+    /* ---- Marquee ---- */
+    .marquee-wrap {
+      overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding: 0.6rem 0;
+      background: rgba(255,255,255,0.02);
+    }
+    .marquee {
+      display: flex;
+      gap: 3rem;
+      animation: slide 20s linear infinite;
+      white-space: nowrap;
+      width: max-content;
+    }
+    .marquee span {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #334155;
+    }
+    .marquee span.accent { color: var(--pink); }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ---- Sections ---- */
+    .section {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #f1f5f9;
+      margin-bottom: 0.5rem;
+      line-height: 1.15;
+    }
+    .section-sub {
+      color: #64748b;
+      font-size: 1rem;
+      margin-bottom: 3rem;
+      max-width: 520px;
+    }
+
+    /* ---- Bento grid ---- */
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto;
+      gap: 1rem;
+    }
+    @media (max-width: 680px) { .bento { grid-template-columns: 1fr; } }
+    @media (min-width: 681px) and (max-width: 900px) { .bento { grid-template-columns: repeat(2, 1fr); } }
+
+    .bento-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+    .bento-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+    .bento-card.wide { grid-column: span 2; }
+    .bento-card .icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .bento-card h3 { font-size: 1rem; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+    .bento-card p { font-size: 0.875rem; color: #64748b; line-height: 1.6; }
+    .bento-card .pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0.75rem; }
+    .pill {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      border: 1px solid;
+    }
+    .pill-pink   { color: var(--pink);   border-color: rgba(244,114,182,0.3); background: rgba(244,114,182,0.08); }
+    .pill-purple { color: var(--purple); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.08); }
+    .pill-cyan   { color: var(--cyan);   border-color: rgba(34,211,238,0.3);  background: rgba(34,211,238,0.08); }
+    .pill-yellow { color: var(--yellow); border-color: rgba(251,191,36,0.3);  background: rgba(251,191,36,0.08); }
+    .pill-green  { color: var(--green);  border-color: rgba(74,222,128,0.3);  background: rgba(74,222,128,0.08); }
+
+    /* ---- Interests grid ---- */
+    .interests {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .interest-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .interest-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+    .interest-item .emoji { font-size: 1.4rem; flex-shrink: 0; }
+    .interest-item span { font-size: 0.875rem; font-weight: 600; color: #cbd5e1; }
+
+    /* ---- Fun counter ---- */
+    .counters {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .counter-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .counter-card .num {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .counter-card .desc { font-size: 0.8rem; color: #64748b; margin-top: 4px; font-weight: 500; }
+
+    /* ---- Contact ---- */
+    .contact-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .contact-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.875rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: #cbd5e1;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .contact-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #f1f5f9; }
+
+    /* ---- Footer ---- */
     footer {
       text-align: center;
-      padding: 2rem;
+      padding: 3rem 2rem;
       font-size: 0.8rem;
-      color: #475569;
-      border-top: 1px solid #1e293b;
+      color: #334155;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    footer span { color: var(--pink); }
+
+    /* ---- Click ripple ---- */
+    .ripple {
+      position: fixed;
+      border-radius: 50%;
+      width: 8px; height: 8px;
+      pointer-events: none;
+      animation: ripple-out 0.6s ease-out forwards;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+    }
+    @keyframes ripple-out {
+      0%   { width: 0; height: 0; opacity: 0.6; }
+      100% { width: 80px; height: 80px; opacity: 0; }
     }
   </style>
 </head>
 <body>
 
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
   <nav>
-    <div class="nav-logo">Ben Henderson</div>
+    <div class="nav-logo"><span>✦</span> Ben</div>
     <div class="nav-links">
-      <a href="#about">About</a>
-      <a href="#projects">Projects</a>
-      <a href="#contact">Contact</a>
+      <a href="#stuff">Stuff</a>
+      <a href="#into">Into</a>
+      <a href="#numbers">Numbers</a>
+      <a href="#contact">Say hi</a>
     </div>
   </nav>
 
+  <!-- Hero -->
   <div class="hero">
-    <div class="hero-label">Available for work</div>
-    <h1>Hi, I'm <span>Ben Henderson</span></h1>
-    <p>I build things for the web — clean interfaces, reliable backends, and thoughtful products that solve real problems.</p>
-    <div class="btn-group">
-      <a href="#projects" class="btn btn-primary">View Projects</a>
-      <a href="#contact" class="btn btn-outline">Get in Touch</a>
+    <div class="hero-eyebrow">welcome to the internet corner</div>
+    <h1>
+      <span class="line">Making</span>
+      <span class="line grad">cool stuff</span>
+      <span class="line">on the web</span>
+    </h1>
+    <p class="hero-sub">
+      I like building things, breaking things, and occasionally <em>shipping</em> things.
+      Pull up a chair.
+    </p>
+    <div class="hero-scroll">
+      scroll <span class="arrow">↓</span>
     </div>
   </div>
 
-  <section id="about">
-    <h2>About</h2>
-    <div class="about-grid">
-      <div class="about-item">
-        <div class="label">Location</div>
-        <div class="value">Australia</div>
-      </div>
-      <div class="about-item">
-        <div class="label">Focus</div>
-        <div class="value">Full-Stack Development</div>
-      </div>
-      <div class="about-item">
-        <div class="label">Interests</div>
-        <div class="value">Web apps, AI tools, automation</div>
-      </div>
-      <div class="about-item">
-        <div class="label">Status</div>
-        <div class="value">Open to opportunities</div>
-      </div>
+  <!-- Marquee -->
+  <div class="marquee-wrap">
+    <div class="marquee">
+      <span>React</span><span class="accent">✦</span>
+      <span>TypeScript</span><span class="accent">✦</span>
+      <span>Python</span><span class="accent">✦</span>
+      <span>Node.js</span><span class="accent">✦</span>
+      <span>Good Vibes</span><span class="accent">✦</span>
+      <span>Too Much Coffee</span><span class="accent">✦</span>
+      <span>Dark Mode</span><span class="accent">✦</span>
+      <span>Keyboard Shortcuts</span><span class="accent">✦</span>
+      <span>Open Source</span><span class="accent">✦</span>
+      <span>3am Ideas</span><span class="accent">✦</span>
+      <!-- duplicate for seamless loop -->
+      <span>React</span><span class="accent">✦</span>
+      <span>TypeScript</span><span class="accent">✦</span>
+      <span>Python</span><span class="accent">✦</span>
+      <span>Node.js</span><span class="accent">✦</span>
+      <span>Good Vibes</span><span class="accent">✦</span>
+      <span>Too Much Coffee</span><span class="accent">✦</span>
+      <span>Dark Mode</span><span class="accent">✦</span>
+      <span>Keyboard Shortcuts</span><span class="accent">✦</span>
+      <span>Open Source</span><span class="accent">✦</span>
+      <span>3am Ideas</span><span class="accent">✦</span>
     </div>
-  </section>
+  </div>
 
-  <section id="projects">
-    <h2>Projects</h2>
-    <div class="projects">
-      <div class="project-card">
+  <!-- Stuff I've built -->
+  <section class="section" id="stuff">
+    <div class="section-label">stuff I've built</div>
+    <h2 class="section-title">Projects &amp; experiments</h2>
+    <p class="section-sub">Some finished, some half-baked, all interesting (to me at least).</p>
+
+    <div class="bento">
+      <div class="bento-card wide">
+        <div class="icon">🎯</div>
         <h3>Pre-Sales Command Centre</h3>
-        <p>An AI-powered CRM tool for pre-sales engineers. Tracks accounts, stages, and generates tailored demo prep guides using Claude.</p>
-        <div class="tags">
-          <span class="tag">React</span>
-          <span class="tag">Claude API</span>
-          <span class="tag">localStorage</span>
+        <p>An AI-powered CRM for pre-sales engineers. Tracks accounts through deal stages and fires up Claude to auto-generate tailored demo prep guides — discovery questions, objection handling, the works.</p>
+        <div class="pill-row">
+          <span class="pill pill-purple">React</span>
+          <span class="pill pill-pink">Claude API</span>
+          <span class="pill pill-cyan">Browser-only</span>
         </div>
       </div>
-      <div class="project-card">
-        <h3>Project Two</h3>
-        <p>A description of your second project goes here. What problem does it solve? What tech did you use?</p>
-        <div class="tags">
-          <span class="tag">Node.js</span>
-          <span class="tag">PostgreSQL</span>
-          <span class="tag">TypeScript</span>
+
+      <div class="bento-card">
+        <div class="icon">🔧</div>
+        <h3>Project Slot</h3>
+        <p>Drop your next project here. Something you built, broke, rebuilt, and are (mostly) proud of.</p>
+        <div class="pill-row">
+          <span class="pill pill-yellow">Coming soon</span>
         </div>
       </div>
-      <div class="project-card">
-        <h3>Project Three</h3>
-        <p>A description of your third project goes here. Keep it short and focused on impact.</p>
-        <div class="tags">
-          <span class="tag">Python</span>
-          <span class="tag">FastAPI</span>
-          <span class="tag">Docker</span>
+
+      <div class="bento-card">
+        <div class="icon">🌱</div>
+        <h3>Another Slot</h3>
+        <p>Maybe a side hustle. Maybe a script that saves you 20 seconds a day. All counts.</p>
+        <div class="pill-row">
+          <span class="pill pill-green">Coming soon</span>
+        </div>
+      </div>
+
+      <div class="bento-card">
+        <div class="icon">💡</div>
+        <h3>The Graveyard</h3>
+        <p>Ideas that didn't quite make it but taught something anyway. Every dev has one.</p>
+        <div class="pill-row">
+          <span class="pill pill-pink">RIP</span>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="contact">
-    <h2>Contact</h2>
-    <p style="color:#94a3b8; margin-bottom:1.25rem;">Feel free to reach out — I'm always open to interesting conversations and opportunities.</p>
-    <div class="contact-links">
-      <a href="https://github.com/benhenderson3003" class="contact-link" target="_blank">
+  <!-- Things I'm into -->
+  <section class="section" id="into">
+    <div class="section-label">things I'm into</div>
+    <h2 class="section-title">Current obsessions</h2>
+    <p class="section-sub">Subject to change without notice. Probably changed since you loaded this page.</p>
+
+    <div class="interests">
+      <div class="interest-item"><span class="emoji">🤖</span><span>AI tools</span></div>
+      <div class="interest-item"><span class="emoji">⌨️</span><span>Mechanical keyboards</span></div>
+      <div class="interest-item"><span class="emoji">☕</span><span>Good coffee</span></div>
+      <div class="interest-item"><span class="emoji">🎮</span><span>Indie games</span></div>
+      <div class="interest-item"><span class="emoji">📦</span><span>Side projects</span></div>
+      <div class="interest-item"><span class="emoji">🎵</span><span>Lo-fi beats</span></div>
+      <div class="interest-item"><span class="emoji">🌏</span><span>Australia 🦘</span></div>
+      <div class="interest-item"><span class="emoji">📖</span><span>Tech newsletters</span></div>
+      <div class="interest-item"><span class="emoji">🐙</span><span>Open source</span></div>
+      <div class="interest-item"><span class="emoji">🌙</span><span>Dark mode everything</span></div>
+      <div class="interest-item"><span class="emoji">🏃</span><span>Morning runs</span></div>
+      <div class="interest-item"><span class="emoji">🍕</span><span>Late night pizza</span></div>
+    </div>
+  </section>
+
+  <!-- Fun numbers -->
+  <section class="section" id="numbers">
+    <div class="section-label">completely made-up stats</div>
+    <h2 class="section-title">By the numbers</h2>
+    <p class="section-sub">Accurate to within ±∞. Do not cite in academic work.</p>
+
+    <div class="counters">
+      <div class="counter-card">
+        <div class="num" data-target="847">0</div>
+        <div class="desc">cups of coffee consumed</div>
+      </div>
+      <div class="counter-card">
+        <div class="num" data-target="12">0</div>
+        <div class="desc">projects finished (give or take)</div>
+      </div>
+      <div class="counter-card">
+        <div class="num" data-target="3019">0</div>
+        <div class="desc">Stack Overflow tabs opened</div>
+      </div>
+      <div class="counter-card">
+        <div class="num" data-target="99">0</div>
+        <div class="desc">% of bugs "just one more fix" away</div>
+      </div>
+      <div class="counter-card">
+        <div class="num" data-target="4">0</div>
+        <div class="desc">mechanical keyboards (necessary)</div>
+      </div>
+      <div class="counter-card">
+        <div class="num" data-target="1">0</div>
+        <div class="desc">regrets (not starting sooner)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="section" id="contact">
+    <div class="section-label">don't be a stranger</div>
+    <h2 class="section-title">Say hello 👋</h2>
+    <p class="section-sub">Slide into my GitHub issues, email, wherever. I don't bite (usually).</p>
+
+    <div class="contact-row">
+      <a href="https://github.com/benhenderson3003" class="contact-btn" target="_blank">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836a9.59 9.59 0 012.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
         GitHub
       </a>
-      <a href="mailto:ben@example.com" class="contact-link">
+      <a href="mailto:ben@example.com" class="contact-btn">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
-        Email
+        Email me
       </a>
-      <a href="https://linkedin.com/in/benhenderson3003" class="contact-link" target="_blank">
+      <a href="https://linkedin.com/in/benhenderson3003" class="contact-btn" target="_blank">
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zm2-5a2 2 0 100 4 2 2 0 000-4z"/></svg>
         LinkedIn
       </a>
@@ -260,8 +486,43 @@
   </section>
 
   <footer>
-    &copy; 2026 Ben Henderson &middot; Built with HTML &amp; CSS
+    Made with <span>♥</span> and too much caffeine &middot; &copy; 2026 Ben Henderson
   </footer>
 
+  <script>
+    // Animated counters
+    const observers = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        const target = +el.dataset.target;
+        const duration = 1200;
+        const start = performance.now();
+        const tick = (now) => {
+          const p = Math.min((now - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.floor(ease * target);
+          if (p < 1) requestAnimationFrame(tick);
+          else el.textContent = target;
+        };
+        requestAnimationFrame(tick);
+        observers.unobserve(el);
+      });
+    }, { threshold: 0.4 });
+
+    document.querySelectorAll('.num[data-target]').forEach(el => observers.observe(el));
+
+    // Click ripple
+    document.addEventListener('click', (e) => {
+      const r = document.createElement('div');
+      r.className = 'ripple';
+      const colors = ['#f472b6','#a78bfa','#22d3ee','#fbbf24'];
+      r.style.border = `2px solid ${colors[Math.floor(Math.random()*colors.length)]}`;
+      r.style.left = e.clientX + 'px';
+      r.style.top  = e.clientY + 'px';
+      document.body.appendChild(r);
+      r.addEventListener('animationend', () => r.remove());
+    });
+  </script>
 </body>
 </html>
